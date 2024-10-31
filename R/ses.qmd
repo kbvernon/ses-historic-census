@@ -1,0 +1,100 @@
+---
+title: "Supplement A: lightGBM for Modeling SES"
+date: today
+published-title: "COMPILED"
+format:
+  html: 
+    fig-align: center
+    fig-dpi: 300
+    fig-format: svg
+    fig-responsive: true
+    number-sections: true
+    number-depth: 3
+    toc: true
+    toc-depth: 3
+    smooth-scroll: true
+    theme: cosmo
+    highlight-style: a11y
+    code-tools: true
+    code-links:
+      - text: kbvernon/community-centers
+        icon: github
+        href: https://github.com/kbvernon/ses-historic-census
+execute: 
+  echo: true
+  warning: false
+  error: false
+---
+
+## Introduction
+
+**Goal:** to evaluate a multivariate proxy for socio-economic status (SES) in historical census data.
+
+**Data:** anonymous but linked US Census data from 1920 and 1940 provided by IPUMS.
+
+**Method:** there's no statistical inference or hypothesis testing. This is a question of pure prediction, so we are using Microsoft's lightGBM as implemented in the R package of the same name.
+
+## R Preamble
+
+```{r}
+
+library(arrow)
+library(lightgbm)
+library(tidyverse)
+
+```
+
+ome ggplot defaults
+
+```{r}
+#| code-fold: true
+
+theme_set(theme_bw())
+
+theme_update(
+  axis.text = element_text(size = rel(0.75), color = "gray50"),
+  axis.ticks = element_line(linewidth = 0.2, color = "gray85"),
+  axis.title = element_text(size = rel(1)),
+  legend.text = element_text(size = rel(0.9)),
+  legend.title = element_text(size = rel(0.9)),
+  panel.grid = element_blank(),
+  plot.title = element_text(size = rel(1), margin = margin(b = 2)),
+  strip.background = element_blank(),
+  strip.text = element_text(size = rel(1))
+)
+
+# trim all white space around image, 
+# but then add a few white pixels back (dx, dy)
+# all done with the magic of {magick}
+prepare_image <- function(x, dx = 2, dy = 30, color = "white") {
+  
+  img <- image_read(path = x)
+  
+  img <- image_trim(img)
+  
+  info <- image_info(img)
+    
+  new_width <- info[["width"]] + dx
+  new_height <- info[["height"]] + dy
+  
+  img <- image_extent(
+    img, 
+    geometry_area(new_width, new_height), 
+    color = color
+  )
+  
+  image_write(img, path = x)
+  
+}
+
+```
+
+## Data
+
+```{r}
+
+census <- file.path("data", "census.parquet") |>
+  normalizePath(winslash = "/", mustWork = FALSE) |>
+  read_parquet(as_data_frame = TRUE)
+
+```
